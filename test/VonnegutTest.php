@@ -11,15 +11,18 @@ class VonnegutTest extends VonnegutTestCase
 {
     
     public function testReflectFile() {
-        $this->markTestIncomplete('This test is yet to be implemented');
+        $vonnegut = new Vonnegut();
+        $serial = $vonnegut->reflectFile(dirname(__FILE__) . "/fixtures/FixtureSingleClass.php");
+        $vType = "Vonnegut String Serialization";
+        $this->assertObjectHasAttribute('classes', $serial, "$vType does not have a 'classes' attribute");
     }
     
     public function testReflectClass() {
-        
+        $this->markTestIncomplete('This test is yet to be implemented');
     }
     
     public function testReflectMethod() {
-        
+        $this->markTestIncomplete('This test is yet to be implemented');
     }
     
     
@@ -89,11 +92,11 @@ PHPSTRING;
         $vonnegut = new Vonnegut();
         $serial = $vonnegut->reflectString($phpString);
         $vType = "Vonnegut String Serialization";
-        $this->assertObjectHasAttribute('path', $serial,                "$vType does not contain a Path attribute");
-        $this->assertObjectHasAttribute('classes', $serial,             "$vType does not contain a Classes attribute");
-        $this->assertEquals(3, count($serial->classes),                 "$vType does not contain 3 Classes");
-        $this->assertObjectHasAttribute('methods', $serial->classes[0], "$vType Class does not contain a Methods attribute");
-        $this->assertEquals(2, count($serial->classes[0]->methods),     "$vType Class does not contain 2 Methods");
+        $this->assertObjectHasAttribute('path', $serial,                "$vType does not contain a 'path' attribute");
+        $this->assertObjectHasAttribute('classes', $serial,             "$vType does not contain a 'classes' attribute");
+        $this->assertEquals(3, count($serial->classes),                 "$vType does not contain 3 classes");
+        $this->assertObjectHasAttribute('methods', $serial->classes[0], "$vType Class does not contain a 'methods' attribute");
+        $this->assertEquals(2, count($serial->classes[0]->methods),     "$vType Class does not contain 2 methods");
         $this->assertEquals('Gets a whatsit.', $serial->classes[0]->methods[0]->shortDescription, "OneThing::whatsit method has the wrong short description");
         
     }
