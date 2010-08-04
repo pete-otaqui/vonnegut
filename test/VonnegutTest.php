@@ -12,16 +12,22 @@ class VonnegutTest extends VonnegutTestCase
     
     public function testReflectFile() {
         $vonnegut = new Vonnegut();
-        $serial = $vonnegut->reflectFile(dirname(__FILE__) . "/fixtures/FixtureSingleClass.php");
+        $serial = $vonnegut->reflectFile(dirname(__FILE__) . "/fixtures/Standalone/Class.php");
         $vType = "Vonnegut String Serialization";
         $this->assertObjectHasAttribute('classes', $serial, "$vType does not have a 'classes' attribute");
     }
     
     public function testReflectClass() {
+        $vonnegut = new Vonnegut();
+        require_once(dirname(__FILE__) . "/fixtures/Standalone/Class.php");
+        $serial = $vonnegut->reflectClass(new Zend_Reflection_Class('Standalone_Class'));
         $this->markTestIncomplete('This test is yet to be implemented');
     }
     
     public function testReflectMethod() {
+        $vonnegut = new Vonnegut();
+        require_once(dirname(__FILE__) . "/fixtures/Standalone/Class.php");
+        $serial = $vonnegut->reflectClass(new Zend_Reflection_Class('Standalone_Class'));
         $this->markTestIncomplete('This test is yet to be implemented');
     }
     

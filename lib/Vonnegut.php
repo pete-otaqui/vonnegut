@@ -13,7 +13,7 @@ class Vonnegut
     /**
      * Reflects on a given file, parsing out classes and methods
      * for serialization.
-     *
+     * 
      * @param string $path the path of a file to reflect.
      * @return object the serialized documentation object.
      */
@@ -23,10 +23,25 @@ class Vonnegut
         $serial = new StdClass();
         $serial->path = $path;
         $serial->classes = array();
+        $serial->interfaces = array();
+        $serial->functions = array();
         $file_reflector = new Zend_Reflection_File($path);
         $classes = $file_reflector->getClasses();
         foreach ( $classes as $class ) {
-            $serial->classes[] = $this->reflectClass($class);
+            $classSerial = $this->reflectClass($class);
+            $isInterface = $classSerial->interface;
+            unset($classSerial->interface);
+            if ( $isInterface == false ) {
+                $serial->classes[$classSerial->name] = $classSerial;
+            } else {
+                $serial->interfaces[$classSerial->name] = $classSerial;
+            }
+            unset($classSerial->name);
+        }
+        $functions  = $file_reflector->getFunctions();
+        foreach ( $functions as $function ) {
+            $functionSerial = $this->reflectMethod($function);
+            $serial->functions[$function->name] = $functionSerial;
         }
         return $serial;
     }
@@ -56,29 +71,41 @@ class Vonnegut
         $serial = new StdClass();
         $serial->name = $reflection->name;
         $properties = $reflection->getProperties();
-        $serial->properties = array();
+        $serial->properties = count($properties) ? array() : new StdClass();
         foreach ( $properties as $property ) {
             $serialProp = new StdClass();
             $serialProp->name = $property->name;
             if ( $dbProp = $property->getDocComment() ) {
-                $serialProp->shortDescription = $dbProp->getShortDescription();
-                $serialProp->longDescription = $dbProp->getLongDescription();
+                $serialProp->description = $dbProp->getShortDescription() ."\n\n". $dbProp->getLongDescription();
             }
-            $serial->properties[] = $serialProp;
+            $serial->properties[$serialProp->name] = $serialProp;
+            unset($serialProp->name);
         }
-        $serial->methods = array();
         $methods = $reflection->getMethods();
+        $serial->methods = count($methods) ? array() : new StdClass();
         foreach ( $methods as $method ) {
             if ( $method->getDeclaringClass()->name !== $reflection->name ) continue;
-            $serial->methods[] = $this->reflectMethod($method);
+            $serialMethod = $this->reflectMethod($method);
+            $serial->methods[$serialMethod->name] = $serialMethod;
+            unset($serialMethod->name);
         }
         try {
             $db = $reflection->getDocBlock();
-            $serial->shortDescription = $db->getShortDescription();
-            $serial->longDescription = $db->getLongDescription();
+            $serial->description = $db->getShortDescription() . "\n\n" . $db->getLongDescription();
         } catch ( Zend_Reflection_Exception $e ) {
             
         }
+        // put parent class name into $serial->extends
+        $parentClass = (array) $reflection->getParentClass();
+        if ( array_key_exists('name', $parentClass) ) $serial->extends = $parentClass['name'];
+        // abstract / final / interface
+        $serial->abstract = $reflection->isAbstract();
+        $serial->final = $reflection->isFinal();
+        $serial->interface = $reflection->isInterface();
+        // put interfaces into $serial->implements
+        $serial->implements = $reflection->getInterfaceNames();
+        // constants
+        $serial->constants = $reflection->getConstants();
         return $serial;
     }
     
@@ -97,27 +124,30 @@ class Vonnegut
         if ( $reflection->isPublic() ) $serial->access = "public";
         try {
             $db = $reflection->getDocBlock();
-            $serial->shortDescription = $db->getShortDescription();
-            $serial->longDescription = $db->getLongDescription();
-            $serial->body = $reflection->getContents(true);
+            $serial->description = $db->getShortDescription() . "\n\n" . $db->getLongDescription();
+            //$serial->body = $reflection->getContents(true);
         } catch ( Zend_Reflection_Exception $e ) {
-            $serial->body = $reflection->getContents(false);
+            //$serial->body = $reflection->getContents(false);
             $db = false;
         }
+        $serial->parameters = array();
         $serial->tags = array();
         if ( $db ) {
             $tags = $db->getTags();
             foreach ( $tags as $tag ) {
                 $tagSerial = new StdClass();
-                $tagSerial->name = $tag->getName();
                 $tagSerial->description = $tag->getDescription();
                 if ( is_a($tag, "Zend_Reflection_Docblock_Tag_Return") ) {
                     $tagSerial->type = $tag->getType();
+                    $serial->return = $tagSerial;
                 } elseif ( is_a($tag, "Zend_Reflection_Docblock_Tag_Param") ) {
                     $tagSerial->type = $tag->getType();
                     $tagSerial->variableName = $tag->getVariableName();
+                    $serial->parameters[] = $tagSerial;
+                } else {
+                    //$tagSerial->name = $tag->getName();
+                    $serial->tags[] = $tagSerial;
                 }
-                $serial->tags[] = $tagSerial;
             }
         }
         return $serial;

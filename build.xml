@@ -19,7 +19,6 @@
         <target name="dir_setup">
                 <mkdir dir="${reports.dir}" />
                 <mkdir dir="${reports.dir}/html" />
-                <mkdir dir="${reports.dir}/coverage" />
         </target>
 </project>
 
