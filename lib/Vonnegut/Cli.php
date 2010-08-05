@@ -10,8 +10,6 @@
  * @todo Work out what's breaking this when run on Zend_Test
  * @todo Maybe implement RH's idea for a Vonnegut_PathResolver
  * @todo Add a prefix to strip off filename and serialized 'path' value
- * @fixme Zend_* methods don't seem to return complete source?
- * @todo Write some tests!
  **/
 class Vonnegut_Cli
 {
@@ -251,7 +249,7 @@ class Vonnegut_Cli
             }
         }
         //print_r($serial);
-        $this->_outputReflectionFile("_vonnegut_", $serial);
+        $this->_outputReflectionFile("vonnegut", $serial);
     }
     
     /**
@@ -265,6 +263,7 @@ class Vonnegut_Cli
     protected function _outputReflectionFile($infile, $reflection) {
         // May need Vonnegut_Output_Json and Vonnegut_Output_Otherformat classes
         // in the future.
+        $reflection->meta = $this->_getMeta();
         if ( $this->_format == 'json' ) {
             $json = Zend_Json::encode($reflection);
             if ( $this->_outputPath ) {

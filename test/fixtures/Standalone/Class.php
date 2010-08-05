@@ -55,6 +55,19 @@ class Standalone_Class
     }
     
     /**
+     * Documented type-hinting.
+     * 
+     * This static method uses type hinting for the param, and has
+     * some overriding documentation
+     * 
+     * @param Override_Class $overrideName Some values are overridden 
+     * @return boolean
+     */
+    public static function documentedTypeHint(Standalone_Class $arg1=null) {
+        return true;
+    }
+    
+    /**
      * Public property.
      *
      * @var array

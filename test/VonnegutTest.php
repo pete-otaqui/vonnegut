@@ -13,8 +13,14 @@ class VonnegutTest extends VonnegutTestCase
     public function testReflectFile() {
         $vonnegut = new Vonnegut();
         $serial = $vonnegut->reflectFile(dirname(__FILE__) . "/fixtures/Standalone/Class.php");
-        $vType = "Vonnegut String Serialization";
-        $this->assertObjectHasAttribute('classes', $serial, "$vType does not have a 'classes' attribute");
+        $vType = "Vonnegut File Serialization";
+        $this->assertObjectHasAttribute('classes', $serial, "$vType has 'classes'");
+        $this->assertObjectHasAttribute('interfaces', $serial, "$vType has 'interfaces'");
+        $this->assertObjectHasAttribute('functions', $serial, "$vType has 'functions'");
+        //$this->assertObjectHasAttribute('constants', $serial, "$vType has 'constants'");
+        //$this->assertObjectHasAttribute('variables', $serial, "$vType has 'variables'");
+        //$this->assertObjectHasAttribute('namespaces', $serial, "$vType has 'namespaces'");
+        //$this->assertObjectHasAttribute('meta', $serial, "$vType has 'meta'");
     }
     
     public function testReflectClass() {
@@ -30,6 +36,35 @@ class VonnegutTest extends VonnegutTestCase
         $serial = $vonnegut->reflectClass(new Zend_Reflection_Class('Standalone_Class'));
         $this->markTestIncomplete('This test is yet to be implemented');
     }
+    
+    public function testUndocumentedParamTypeHint() {
+        $vonnegut = new Vonnegut();
+        require_once(dirname(__FILE__) . "/fixtures/Standalone/Class.php");
+        $class = $vonnegut->reflectClass(new Zend_Reflection_Class('Standalone_Class'));
+        $method = $class->methods['undocumentedTypeHint'];
+        $parameters = $method->parameters;
+        $this->assertEquals( 1, count($parameters), "Takes 1 parameter");
+        $parameter = $parameters[0];
+        $this->assertEquals( "arg1", $parameter->name, "Name is 'arg1'");
+        $this->assertEquals( "Standalone_Class", $parameter->type, "Type is Standalone_Class");
+        $this->assertFalse( $parameter->allowsNull, "Does not allow null");
+        $this->assertFalse( $parameter->passedByReference, "Is not passed by reference");
+    }
+    
+    public function testDocumentedParamTypeHint() {
+        $vonnegut = new Vonnegut();
+        require_once(dirname(__FILE__) . "/fixtures/Standalone/Class.php");
+        $class = $vonnegut->reflectClass(new Zend_Reflection_Class('Standalone_Class'));
+        $method = $class->methods['documentedTypeHint'];
+        $parameters = $method->parameters;
+        $this->assertEquals( 1, count($parameters), "Takes 1 parameter");
+        $parameter = $parameters[0];
+        $this->assertEquals( "\$overrideName", $parameter->name, "Name is 'overrideName'");
+        $this->assertEquals( "Override_Class", $parameter->type, "Type is Standalone_Class");
+        $this->assertTrue( $parameter->allowsNull, "Allows null");
+        $this->assertFalse( $parameter->passedByReference, "Is not passed by reference");
+    }
+    
     
     
     public function testReflectString() {
@@ -98,12 +133,17 @@ PHPSTRING;
         $vonnegut = new Vonnegut();
         $serial = $vonnegut->reflectString($phpString);
         $vType = "Vonnegut String Serialization";
-        $this->assertObjectHasAttribute('path', $serial,                "$vType does not contain a 'path' attribute");
-        $this->assertObjectHasAttribute('classes', $serial,             "$vType does not contain a 'classes' attribute");
-        $this->assertEquals(3, count($serial->classes),                 "$vType does not contain 3 classes");
-        $this->assertObjectHasAttribute('methods', $serial->classes[0], "$vType Class does not contain a 'methods' attribute");
-        $this->assertEquals(2, count($serial->classes[0]->methods),     "$vType Class does not contain 2 methods");
-        $this->assertEquals('Gets a whatsit.', $serial->classes[0]->methods[0]->shortDescription, "OneThing::whatsit method has the wrong short description");
+        $oneThing = $serial->classes['OneThing'];
+        $this->assertObjectHasAttribute('classes', $serial,     "$vType contains a 'classes' attribute");
+        $this->assertObjectHasAttribute('constants', $serial,   "$vType has 'constants'");
+        $this->assertObjectHasAttribute('variables', $serial,   "$vType has 'variables'");
+        $this->assertObjectHasAttribute('namespaces', $serial,  "$vType has 'namespaces'");
+        $this->assertObjectHasAttribute('meta', $serial,        "$vType has 'meta'");
+        $this->assertEquals(3, count($serial->classes),         "$vType contains 3 classes");
+        $this->assertObjectHasAttribute('methods', $oneThing,   "$vType Class contains a 'methods' attribute");
+        $this->assertArrayHasKey('whatsit', $oneThing->methods, "$vType Class contains whatsit method");
+        $this->assertArrayHasKey('eck', $oneThing->methods,     "$vType Class contains eck method");
+        $this->assertEquals("Gets a whatsit.", $oneThing->methods['whatsit']->description, "OneThing::whatsit method has the right description");
         
     }
 }
