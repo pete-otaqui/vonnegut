@@ -4,7 +4,7 @@
  * 
  * @package fixtures
  */
-class Fixtures_Extends_Grandchild 
+class Fixtures_Extends_Child_Grandchild extends Fixtures_Extends_Child
 {
     /**
      * These docs are defined in the grandparent, skipped in the

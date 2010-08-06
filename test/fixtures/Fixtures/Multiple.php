@@ -1,6 +1,6 @@
 <?
 
-class FixtureMultipleClassesFirst
+class Fixtures_Multiple
 {
     
 }

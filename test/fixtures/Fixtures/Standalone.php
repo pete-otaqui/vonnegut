@@ -8,37 +8,38 @@
  * @package standalone
  **/
 
+
 /**
  * Standalone class in it's own package.
  * 
- * @property mixed $readwrite a readable and writable magic property
- * @property-read string $read a readble magic property
- * @property-write mixed $write a writable magic property
+ * @param mixed $readwrite a readable and writable magic property
+ * @param string $read a readble magic property
+ * @param mixed $write a writable magic property
  * 
  * @package standalone
  * @author pete otaqui
  */
-class Standalone_Class
+class Fixtures_Standalone
 {
     /**
      * Static property.
      * 
      * Static properties are called on the class.
      * 
-     * @example $foo = Standalone_Class::static;
+     * @example $foo = Fixtures_Standalone::static;
      */
-    static $static = "static";
+    static $staticProperty = "staticProperty";
     
     /**
      * Static method.
      * 
      * Static methods are called on the class.
      * 
-     * @example if ( Standalone_Class::staticMethod() ) echo "yay!";
-     * @param Standalone_Class $arg1 an instance of this class.
+     * @example if ( Fixtures_Standalone::staticMethod() ) echo "yay!";
+     * @param Fixtures_Standalone $arg1 an instance of this class.
      * @return boolean
      */
-    public static function staticMethod(Standalone_Class $arg1) {
+    public static function staticMethod(Fixtures_Standalone $arg1) {
         return true;
     }
     
@@ -50,7 +51,7 @@ class Standalone_Class
      * 
      * @return boolean
      */
-    public static function undocumentedTypeHint(Standalone_Class $arg1) {
+    public static function undocumentedTypeHint(Fixtures_Standalone $arg1) {
         return true;
     }
     
@@ -63,7 +64,7 @@ class Standalone_Class
      * @param Override_Class $overrideName Some values are overridden 
      * @return boolean
      */
-    public static function documentedTypeHint(Standalone_Class $arg1=null) {
+    public static function documentedTypeHint(Fixtures_Standalone $arg1=null) {
         return true;
     }
     
@@ -117,13 +118,36 @@ class Standalone_Class
      **/
     public function deprecatedMethod () {}
     
+    /**
+     * Final method
+     *
+     * @return void
+     */
+    final public function finalMethod() {}
+    
+    /**
+     * Takes a parameter passed by reference
+     *
+     * @param string $param 
+     * @return void
+     */
+    public function parameterPassedByReference(&$param) {
+        unset($param);
+    }
     
     
-    
-    
+    /**
+     * @internal
+     */
     protected $_readwrite;
+    /**
+     * @internal
+     */
     protected $_write;
     
+    /**
+     * @internal
+     */
     public function __get($key) {
         switch ($key) {
             case 'read' :
@@ -133,12 +157,26 @@ class Standalone_Class
             break;
         }
     }
+    /**
+     * @internal
+     */
     public function __set($key, $val) {
         switch ($key) {
             case 'write' :
                 $this->_write = $val;
             case 'readwrite' :
                 $this->_readwrite = $val;
+            break;
+        }
+    }
+    
+    /**
+     * @internal
+     */
+    public function __call($method, $args) {
+        switch ($method) {
+            case 'magicMethod' : 
+                return (object) $args;
             break;
         }
     }
