@@ -47,6 +47,19 @@ class Vonnegut
         $serial->interfaces = array();
         $serial->functions = array();
         $file_reflector = new Zend_Reflection_File($path);
+        $serial->tags = array();
+        try {
+            $db = $file_reflector->getDocBlock();
+            $tags = $db->getTags();
+            foreach ( $tags as $tag ) {
+                $tagSerial = new StdClass();
+                $tagSerial->name = $tag->getName();
+                $tagSerial->description = $tag->getDescription();
+                $serial->tags[] = $tagSerial;
+            }
+        } catch (Zend_Reflection_Exception $e) {
+            $db = false;
+        }
         $classes = $file_reflector->getClasses();
         foreach ( $classes as $class ) {
             $classSerial = $this->reflectClass($class);
@@ -93,33 +106,6 @@ class Vonnegut
     public function reflectClass($reflection) {
         $serial = new StdClass();
         $serial->name = $reflection->name;
-        $properties = $reflection->getProperties();
-        $serial->properties = count($properties) ? array() : new StdClass();
-        foreach ( $properties as $property ) {
-            $serialProp = new StdClass();
-            $serialProp->name = $property->name;
-            if ( $dbProp = $property->getDocComment() ) {
-                $serialProp->description = $this->_getDescription($dbProp);
-            }
-            $serial->properties[$serialProp->name] = $serialProp;
-            unset($serialProp->name);
-        }
-        $methods = $reflection->getMethods();
-        $serial->methods = count($methods) ? array() : new StdClass();
-        foreach ( $methods as $method ) {
-            if ( $method->getDeclaringClass()->name !== $reflection->name ) continue;
-            $serialMethod = $this->reflectMethod($method);
-            $serial->methods[$serialMethod->name] = $serialMethod;
-            unset($serialMethod->name);
-        }
-        // weirdly you can't "test" for the presence of a docblock
-        // you can only try and access it, and catch thrown exception.
-        try {
-            $db = $reflection->getDocBlock();
-            $serial->description = $this->_getDescription($db);
-        } catch ( Zend_Reflection_Exception $e ) {
-            $serial->description = "";
-        }
         // put parent class name into $serial->extends
         $parentClass = (array) $reflection->getParentClass();
         if ( array_key_exists('name', $parentClass) ) $serial->extends = $parentClass['name'];
@@ -129,8 +115,70 @@ class Vonnegut
         $serial->interface = $reflection->isInterface();
         // put interfaces into $serial->implements
         $serial->implements = $reflection->getInterfaceNames();
+        // properties
+        $properties = $reflection->getProperties();
+        $serial->properties = count($properties) ? array() : new StdClass();
+        foreach ( $properties as $property ) {
+            $serialProp = new StdClass();
+            $serialProp->name = $property->name;
+            $serialProp->access = $this->_getAccess($property);
+            $serialProp->static = $property->isStatic();
+            $serialProp->type = $property->class;
+            $serialProp->tags = array();
+            if ( $dbProp = $property->getDocComment() ) {
+                $serialProp->description = $this->_getDescription($dbProp);
+                foreach ($dbProp->getTags() as $tag) {
+                    $serialTag = new StdClass();
+                    $serialTag->name = $tag->getName();
+                    $serialTag->description = $tag->getDescription();
+                    $serialProp->tags[] = $serialTag;
+                }
+            }
+            $serial->properties[$serialProp->name] = $serialProp;
+            unset($serialProp->name);
+        }
+        // methods
+        $methods = $reflection->getMethods();
+        $serial->methods = count($methods) ? array() : new StdClass();
+        foreach ( $methods as $method ) {
+            if ( $method->getDeclaringClass()->name !== $reflection->name ) continue;
+            $serialMethod = $this->reflectMethod($method);
+            $serial->methods[$serialMethod->name] = $serialMethod;
+            unset($serialMethod->name);
+        }
         // constants
-        $serial->constants = $reflection->getConstants();
+        $constants = $reflection->getConstants();
+        $serial->constants = count($constants) ? array() : new StdClass();
+        foreach ( $constants as $constant ) {
+            $constantSerial = new StdClass();
+            $constantSerial->name = $constant->getName();
+            $serial->constants[] = $constantSerial;
+        }
+        
+        // tags
+        // weirdly you can't "test" for the presence of a docblock
+        // you can only try and access it, and catch thrown exception.
+        try {
+            $db = $reflection->getDocBlock();
+            $serial->description = $this->_getDescription($db);
+            foreach ( $db->getTags() as $tag ) {
+                $tagSerial = new StdClass();
+                $tagSerial->description = $tag->getDescription();
+                if ( $tag->getName() == "param" ) {
+                    $name = str_replace('$','',$tag->getVariableName());
+                    $tagSerial->type = $tag->getType();
+                    $tagSerial->access = "public";
+                    $tagSerial->magic = true;
+                    $serial->properties[$name] = $tagSerial;
+                } else {
+                    $tagSerial->name = $tag->getName();
+                    $serial->tags[] = $tagSerial;
+                }
+            }
+        } catch ( Zend_Reflection_Exception $e ) {
+            $db = false;
+            $serial->description = "";
+        }
         return $serial;
     }
     
@@ -144,9 +192,12 @@ class Vonnegut
     public function reflectMethod($reflection) {
         $serial = new StdClass();
         $serial->name = $reflection->name;
-        if ( $reflection->isPrivate() ) $serial->access = "private";
-        if ( $reflection->isProtected() ) $serial->access = "protected";
-        if ( $reflection->isPublic() ) $serial->access = "public";
+        if ( get_class($reflection) == 'Zend_Reflection_Method' ) {            
+            $serial->access = $this->_getAccess($reflection);
+            $serial->abstract = $reflection->isAbstract();
+            $serial->static = $reflection->isStatic();
+            $serial->final = $reflection->isFinal();
+        }
         // weirdly you can't "test" for the presence of a docblock
         // you can only try and access it, and catch thrown exception.
         try {
@@ -160,7 +211,7 @@ class Vonnegut
         }
         $serial->parameters = array();
         $serial->tags = array();
-        // reflect on parameters first - these can be overridden by docblocks
+        // reflect on parameters first - these can be overridden by tags
         foreach ( $reflection->getParameters() as $parameter ) {
             $paramSerial = new StdClass();
             $paramSerial->name = $parameter->getName();
@@ -181,13 +232,16 @@ class Vonnegut
         }
         if ( $db ) {
             $paramCount = 0;
+            // tags
             $tags = $db->getTags();
             foreach ( $tags as $tag ) {
                 $tagSerial = new StdClass();
                 $tagSerial->description = $tag->getDescription();
+                // pull out "@return"
                 if ( is_a($tag, "Zend_Reflection_Docblock_Tag_Return") ) {
                     $tagSerial->type = $tag->getType();
                     $serial->return = $tagSerial;
+                // pull out "@param" and override reflected info
                 } elseif ( is_a($tag, "Zend_Reflection_Docblock_Tag_Param") ) {
                     $tagSerial->type = $tag->getType();
                     $tagSerial->name = $tag->getVariableName();
@@ -200,8 +254,8 @@ class Vonnegut
                         $serial->parameters[$paramCount] = $tagSerial;
                     }
                     $paramCount++;
+                // put everything else into $serial->tags
                 } else {
-                    //$tagSerial->name = $tag->getName();
                     $serial->tags[] = $tagSerial;
                 }
             }
@@ -217,6 +271,18 @@ class Vonnegut
      */
     protected function _getDescription($reflection) {
         return trim($reflection->getShortDescription() . "\n\n" . $reflection->getLongDescription());
+    }
+    
+    /**
+     * gets the access status of a property or method (public, protected, private)
+     *
+     * @param ReflectionMethod $reflection 
+     * @return string one of "public", "private" or "protected"
+     */
+    protected function _getAccess($reflection) {
+        if ( $reflection->isPrivate() ) return "private";
+        if ( $reflection->isProtected() ) return "protected";
+        if ( $reflection->isPublic() ) return "public";
     }
     
     /**
