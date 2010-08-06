@@ -37,8 +37,12 @@ class Vonnegut
      * @return object the serialized documentation object.
      */
     public function reflectFile($path) {
+        // adding ./ to the beginning of relative paths fixes an issue including php files
+        if (! preg_match('/^(?:[a-zA-Z]:\\|\/)/', $path)) {
+            $path = '.' . DIRECTORY_SEPARATOR . $path;
+        }
         require_once($path);
-        $filename = (strpos($path,"/")!==false) ? preg_replace("|.*/(.+)$|",$path,"$1") : $path;
+        $filename = $filename = preg_replace("|^.*[\\\/]|", $path, '');
         $serial = new StdClass();
         $serial->constants = array();
         $serial->variables = array();
